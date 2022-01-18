@@ -146,7 +146,7 @@ def new_anime_db(url):
 				cursor.execute(f'''
 				INSERT INTO episode_url VALUES
 				({ep}, {anime_id}, {number_ep});
-				    ''')
+				''')
 		
 		print(f'Добавил аниме {anime_id=}: {name_ru=}')
 		db.commit()
@@ -241,8 +241,7 @@ def new_groups(url_list):
 		else: print('Нету в базе АНИМЕ: ', url)
 	print('Добавил группу:', group_id)				
 	db.commit()
-    return
-
+	return
 
 def check_update():
 	ua = UserAgent().random
