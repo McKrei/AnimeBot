@@ -115,11 +115,10 @@ def new_anime_db(url):
 					episodes_all = episodes_came_out
 
 		cursor.execute(f'''
-		SELECT count(anime_id)
-		FROM anime 
+		SELECT MAX(anime_id)
+		FROM anime
 		''')
 		anime_id = int(cursor.fetchone()[0]) +1
-
 
 		# Записываем в табличку anime
 		cursor.execute(f'''
@@ -207,7 +206,7 @@ def checking_connect_anime(url_anime, anime_id):
 				''')
 
 			number_anime = cursor.fetchone()[0] + 1
-			cursor.execute(f'INSERT INTO anime_groups VALUES ({group_id}, {number_anime}, {anime_id})')
+			cursor.execute(f'INSERT INTO anime_groups VALUES ({group_id[0]}, {number_anime}, {anime_id})')
 			print(f'Добавил аниме в группу {group_id=}, {number_anime=}, {anime_id=}')
 			db.commit()
 			return
