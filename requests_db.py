@@ -64,9 +64,7 @@ def find_episode(anime_id, number_ep=1):
         result = cursor.fetchone()
         return list(result) + pars_ep([result[2]])
 
-    except (Exception) as ex:
-        db.commit()
-        cursor.close()            
+    except (Exception) as ex:          
         print(ex,'\nПри запросе find_episoden',anime_id, number_ep)
         return 'Ошибка в БД'
 
