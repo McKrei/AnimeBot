@@ -162,10 +162,10 @@ def new_anime_db(url):
 
 def count_ep(a_url):
 	'''
-	Проверяем, наличие аниме в БД, возвращаем его ID, серии которые вышли, серии факт. либо None
+	Проверяем, наличие аниме в БД, возвращаем его ID, серии которые вышли, серии факт, всего серий. либо None
 	'''
 	cursor.execute(f'''
-		SELECT anime_id, episodes_came_out
+		SELECT anime_id, episodes_all
 		FROM anime 
 		WHERE anime_url = '{a_url}'
 		''')
@@ -248,7 +248,7 @@ def check_update():
 	all_urls = []
 	update_anime_id_list = []
 
-	# Собираем ссылки на последние 4-ри страницы Аниме. Приводим их к норм виду. 
+	# Собираем ссылки на последние 2-е страницы Аниме. Приводим их к норм виду. 
 	for p in range(1, 3): 
 		url = f'{start_url}page/{p}/'
 		html = requests.get(url, headers={'user-agent': ua}).text
@@ -266,8 +266,9 @@ def check_update():
 		if not result:
 			new_anime_db(url)
 			continue		 		
-		anime_id, out_anime, fact_ep = result
+		anime_id, episodes_all, fact_ep = result
 
+		# Ищем ИД серий которые вышли по аниме 
 		html = requests.get(url, headers={'user-agent': ua}).text
 		soup = BeautifulSoup(html, 'lxml')
 		data = soup.find_all('script')
@@ -275,19 +276,27 @@ def check_update():
 			if el.text.strip()[:50].count('var data = ') > 0:
 				list_ep = re.findall(r'\d{6,}', el.text)
 
+		# Находим указанное количество серий. Если есть отличие, вносим изменение в БД
+		try:
+			element = soup.find('div', {'class': 'shortstoryContent'}).find_all('p')[3].text
+			episodes_all_page = int(re.findall(r'\d+', element)[0])			
+		except Exception:
+			episodes_all_page = 0
+		episodes_all = episodes_all_page if episodes_all_page > episodes_all else episodes_all
+
 		if len(set(list_ep)) == fact_ep:
 			break
 		n_ep = fact_ep + 1
 		list_ep = list(list_ep)
 		for ep in list_ep[fact_ep:]:
-			try: 
+			try:				
 				cursor.execute(f'''
 				INSERT INTO episode_url VALUES
 				({ep}, {anime_id}, {n_ep});
 				''')
 				cursor.execute(f'''
 				UPDATE anime
-				SET episodes_came_out = {len(list_ep)}, date_update = datetime('now')
+				SET episodes_came_out = {len(list_ep)}, date_update = datetime('now'), episodes_all = {episodes_all}
 				WHERE anime_id = {anime_id}
 				''')
 				if anime_id not in update_anime_id_list:
