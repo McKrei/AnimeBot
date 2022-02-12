@@ -252,5 +252,5 @@ async def loop_checking_for_updates(wait):
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    loop.create_task(loop_checking_for_updates(7_200))
+    loop.create_task(loop_checking_for_updates(57_600))
     executor.start_polling(dp, skip_updates=True)
