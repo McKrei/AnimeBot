@@ -1,4 +1,5 @@
 import asyncio
+from random import randint
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
 from aiogram.dispatcher.filters import Text
@@ -252,5 +253,5 @@ async def loop_checking_for_updates(wait):
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    loop.create_task(loop_checking_for_updates(57_600))
+    loop.create_task(loop_checking_for_updates(randint(10_000, 50_000)))
     executor.start_polling(dp, skip_updates=True)
