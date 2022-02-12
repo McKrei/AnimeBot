@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
 from activate_anime_bot import db, cursor
 
-from bank import srart_url_pleer, start_url, genre_dict
+from bank import srart_url_pleer, start_url, genre_dict, domen
 
 
 def pars_ep(list_url_ep):
@@ -102,7 +102,7 @@ def new_anime_db(url):
 
 		# Находим url на картинку и аниме без домена 
 		img_url = soup.find('img', class_='imgRadius')['src']
-		anime_url = url.split('.pw')[1]
+		anime_url = url.split(domen)[1]
 
 
 		data_update = datetime.datetime.now()
@@ -262,7 +262,7 @@ def check_update():
 
 
 	for url in all_urls:
-		result = count_ep(url.split('.pw')[1])
+		result = count_ep(url.split(domen)[1])
 		if not result:
 			new_anime_db(url)
 			continue		 		

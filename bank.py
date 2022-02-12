@@ -10,9 +10,15 @@ sorting_dict = {'Новые': 'date_update',
 				'Высший_рейтинг': 'rating',
 				'Обновления': 'release'}
 
+# Оригинал
+start_url = 'https://animevost.org/'
+srart_url_pleer = 'https://animevost.org//frame5.php?play='
+domen = '.org'
 
-start_url = 'https://v2.vost.pw/'
-srart_url_pleer = 'https://v2.vost.pw//frame5.php?play='
+# Зеркало
+# start_url = 'https://v2.vost.pw/'
+# srart_url_pleer = 'https://v2.vost.pw///frame5.php?play='
+# domen = '.pw'
 
 
 ru_alphabet = set('абвгдеёжзийклмнопрстуфхцчшщъыьэюя')
