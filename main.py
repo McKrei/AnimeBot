@@ -234,22 +234,22 @@ async def click_facori(callback: types.CallbackQuery):
 
 # Функция проверки обновлений аниме и отправки сообщений 
 async def loop_checking_for_updates(wait):
-  while True:   
-    print('Начал проверку обновлений')
-    update_anime_id_list = check_update()
-    for anime_id in update_anime_id_list:
-        users_id = requests_db.user_search(anime_id)
-        if users_id:
-            anime_name = requests_db.find_anime(anime_id)[0][0].title()
-            for user in users_id:
-                try:
-                    await bot.send_message(user[0], 'Вышили новые серии: ', reply_markup=InlineKeyboardMarkup().add(\
-                        InlineKeyboardButton(f'{anime_name}', callback_data=f'more ID_{anime_id}')
-                        ))
-                except Exception as ex:
-                    print(f'loop_checking_for_updates:\n{ex}')
-                    
-    await asyncio.sleep(wait)
+    while True:
+        print('Начал проверку обновлений')
+        update_anime_id_list = check_update()
+        for anime_id in update_anime_id_list:
+            users_id = requests_db.user_search(anime_id)
+            if users_id:
+                anime_name = requests_db.find_anime(anime_id)[0][0].title()
+                for user in users_id:
+                    try:
+                        await bot.send_message(user[0], 'Вышили новые серии: ', reply_markup=InlineKeyboardMarkup().add(\
+                            InlineKeyboardButton(f'{anime_name}', callback_data=f'more ID_{anime_id}')
+                            ))
+                    except Exception as ex:
+                        print(f'loop_checking_for_updates:\n{ex}')
+                        
+        await asyncio.sleep(wait)
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()

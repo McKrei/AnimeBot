@@ -10,6 +10,14 @@ from activate_anime_bot import db, cursor
 from bank import srart_url_pleer, start_url, genre_dict, domen
 
 
+def get_rating_and_popular(soup):
+	try:
+		popularity = int(soup.find('span', {'style': 'font-size:11px; color:#000;'}).text.split(': ')[1][:-1])
+		rating = int(soup.find('li', {'class': 'current-rating'}).text) // 2
+	except Exception:
+		popularity = rating = 0
+	return popularity, rating
+
 def pars_ep(list_url_ep):
 	result = []
 	ua = UserAgent().random
@@ -62,12 +70,7 @@ def new_anime_db(url):
 		element = soup.find('div', {'class': 'shortstoryContent'}).find_all('p')
 
 		# Находим популярность и рейтинг
-		try:
-			popularity = int(soup.find('span', {'style': 'font-size:11px; color:#000;'}).text.split(': ')[1][:-1])
-			rating = int(soup.find('li', {'class': 'current-rating'}).text) // 2
-		except Exception as ex:
-			popularity = rating = 0
-			print('Ошибка в popularity и rating: ',url)
+		popularity, rating = get_rating_and_popular(soup)
 
 		# Находим тип
 		anime_type = element[2].text.split('Тип: ')[1]
@@ -242,6 +245,7 @@ def new_groups(url_list):
 	db.commit()
 	return
 
+
 def check_update():
 	ua = UserAgent().random
 	anime_urls = []
@@ -276,6 +280,7 @@ def check_update():
 			if el.text.strip()[:50].count('var data = ') > 0:
 				list_ep = re.findall(r'\d{6,}', el.text)
 
+		popularity, rating = get_rating_and_popular(soup)
 		# Находим указанное количество серий. Если есть отличие, вносим изменение в БД
 		try:
 			element = soup.find('div', {'class': 'shortstoryContent'}).find_all('p')[3].text
@@ -296,7 +301,11 @@ def check_update():
 				''')
 				cursor.execute(f'''
 				UPDATE anime
-				SET episodes_came_out = {len(list_ep)}, date_update = datetime('now'), episodes_all = {episodes_all}
+				SET episodes_came_out = {len(list_ep)}, 
+					date_update = datetime('now'),
+					episodes_all = {episodes_all},
+					popularity 	= {popularity},
+					rating = {rating}
 				WHERE anime_id = {anime_id}
 				''')
 				if anime_id not in update_anime_id_list:
