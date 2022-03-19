@@ -8,9 +8,11 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 import requests_db
 import markups as nav
+import nest_asyncio
 
 from activate_anime_bot import token
 from parsing import check_update
+from parsing import update_popularity_rating
 from bank import genre_dict, sorting_list, start_url
 
 
@@ -234,6 +236,7 @@ async def click_facori(callback: types.CallbackQuery):
 
 # Функция проверки обновлений аниме и отправки сообщений 
 async def loop_checking_for_updates(wait):
+    url_tuple_popularity_rating = []
     while True:
         print('Начал проверку обновлений')
         update_anime_id_list = check_update()
@@ -248,10 +251,16 @@ async def loop_checking_for_updates(wait):
                             ))
                     except Exception as ex:
                         print(f'loop_checking_for_updates:\n{ex}')
-                        
+
+        print('Обновление рейтинга')
+        # Запрос на обновление рейтинга и популярности.
+        url_tuple_popularity_rating = update_popularity_rating(url_tuple_popularity_rating)
+
+
         await asyncio.sleep(wait)
 
 if __name__ == '__main__':
+    nest_asyncio.apply()
     loop = asyncio.get_event_loop()
     loop.create_task(loop_checking_for_updates(randint(10_000, 50_000)))
     executor.start_polling(dp, skip_updates=True)

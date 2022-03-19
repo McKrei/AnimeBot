@@ -1,7 +1,10 @@
 import datetime
+from email import header
 
 import re
 import requests
+import aiohttp
+import asyncio
 
 from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
@@ -13,10 +16,69 @@ from bank import srart_url_pleer, start_url, genre_dict, domen
 def get_rating_and_popular(soup):
 	try:
 		popularity = int(soup.find('span', {'style': 'font-size:11px; color:#000;'}).text.split(': ')[1][:-1])
-		rating = int(soup.find('li', {'class': 'current-rating'}).text) // 2
-	except Exception:
+		rating 	   = int(soup.find('li', {'class': 'current-rating'}).text) // 2
+	except Exception as ex:
 		popularity = rating = 0
+
 	return popularity, rating
+
+
+async def get_page_data(id, url):
+	async with aiohttp.request('GET', url) as resp:
+		if resp.status == 200:
+			html = await resp.text()
+			soup = BeautifulSoup(html, 'lxml')
+			popularity, rating = get_rating_and_popular(soup)
+			
+			if popularity > 0:
+				result_tuple = (popularity, rating, id)
+				result_data.append(result_tuple)
+
+		return result_data
+
+
+async def load_site_data(url_list):
+	tasks = []
+	for id, url in url_list:
+		task = asyncio.create_task(get_page_data(id, url))
+		tasks.append(task)
+	await asyncio.gather(*tasks)
+
+def writing_popularity_rating(w_list):
+		cursor.executemany(f'''
+			UPDATE anime
+			SET popularity = ?,
+				rating 	   = ?,
+				date_update = datetime('now')
+			WHERE anime_id = ?
+		''', w_list)
+		db.commit()
+
+
+def update_popularity_rating(url_tuple: tuple):
+	try: 
+		global result_data
+		result_data = []
+		if not url_tuple:
+			cursor.execute('''
+				SELECT anime_id, anime_url
+				FROM anime
+			''')
+			url_tuple = tuple(cursor.fetchall())
+
+		url_list = [[id, start_url + url] for id, url in url_tuple[:100]]
+		
+		asyncio.get_event_loop().run_until_complete(load_site_data(url_list))
+		writing_popularity_rating(result_data)
+
+		del result_data
+
+	except Exception as ex:
+		print('Ошибка update_popularity_rating\n', ex)
+
+	finally:
+		return url_tuple[100:]
+
 
 def pars_ep(list_url_ep):
 	result = []
@@ -318,5 +380,8 @@ def check_update():
 	return set(update_anime_id_list)
 
 
-if __name__ == '__main__':
-	data = check_update()
+# if __name__ == '__main__':
+# 	now = datetime.datetime.now()
+# 	list_ = []
+# 	s = update_popularity_rating(list_)
+# 	print(datetime.datetime.now() - now)
