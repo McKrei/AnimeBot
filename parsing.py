@@ -48,8 +48,7 @@ def writing_popularity_rating(w_list):
 		cursor.executemany(f'''
 			UPDATE anime
 			SET popularity = ?,
-				rating 	   = ?,
-				date_update = datetime('now')
+				rating 	   = ?
 			WHERE anime_id = ?
 		''', w_list)
 		db.commit()
