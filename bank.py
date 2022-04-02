@@ -17,7 +17,7 @@ domen = '.org'
 
 # Зеркало
 # start_url = 'https://v2.vost.pw/'
-# srart_url_pleer = 'https://v2.vost.pw///frame5.php?play='
+srart_url_pleer_mirror = 'https://v2.vost.pw///frame5.php?play='
 # domen = '.pw'
 
 

@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
 from activate_anime_bot import db, cursor
 
-from bank import srart_url_pleer, start_url, genre_dict, domen
+from bank import srart_url_pleer, start_url, genre_dict, domen, srart_url_pleer_mirror
 
 
 def get_rating_and_popular(soup):
@@ -48,24 +48,28 @@ def writing_popularity_rating(w_list):
 		cursor.executemany(f'''
 			UPDATE anime
 			SET popularity = ?,
-				rating 	   = ?
+				rating 	   = ?,
+				date_update_rating = datetime('now')
 			WHERE anime_id = ?
+			
 		''', w_list)
 		db.commit()
 
 
-def update_popularity_rating(url_tuple: tuple):
+def update_popularity_rating():
 	try: 
 		global result_data
 		result_data = []
-		if not url_tuple:
-			cursor.execute('''
-				SELECT anime_id, anime_url
-				FROM anime
-			''')
-			url_tuple = tuple(cursor.fetchall())
 
-		url_list = [[id, start_url + url] for id, url in url_tuple[:100]]
+		cursor.execute('''
+			SELECT anime_id, anime_url
+			FROM anime
+			ORDER BY date_update_rating
+			LIMIT 100
+		''')
+		url_tuple = tuple(cursor.fetchall())
+
+		url_list = [[id, start_url + url] for id, url in url_tuple]
 		
 		asyncio.get_event_loop().run_until_complete(load_site_data(url_list))
 		writing_popularity_rating(result_data)
@@ -74,9 +78,6 @@ def update_popularity_rating(url_tuple: tuple):
 
 	except Exception as ex:
 		print('Ошибка update_popularity_rating\n', ex)
-
-	finally:
-		return url_tuple[100:]
 
 
 def pars_ep(list_url_ep):
@@ -87,7 +88,7 @@ def pars_ep(list_url_ep):
 		url = srart_url_pleer + str(ep)
 		html = requests.get(url, headers={'user-agent': ua}).text
 		soup = BeautifulSoup(html, 'lxml')
-		url_list = [None, None, url]
+		url_list = [None, None, srart_url_pleer_mirror + str(ep)]
 		container = soup.find_all('a', target="_blank")
 
 		for el in container:
@@ -214,12 +215,13 @@ def new_anime_db(url):
 		print(f'Добавил аниме {anime_id=}: {name_ru=}')
 		db.commit()
 
-		# Записываем группы :-) 
+		# Записываем группы 
 		if connection_anime:
-			checking_connect_anime(url, anime_id)
+			group_id = checking_connect_anime(url, anime_id)
+			db.commit()
+			return group_id, anime_id, name_ru
+		
 		db.commit()
-
-
 	except (Exception) as ex:
 		print(f'new_anime_db = {url}\n{ex}')
 
@@ -273,10 +275,10 @@ def checking_connect_anime(url_anime, anime_id):
 			cursor.execute(f'INSERT INTO anime_groups VALUES ({group_id[0]}, {number_anime}, {anime_id})')
 			print(f'Добавил аниме в группу {group_id=}, {number_anime=}, {anime_id=}')
 			db.commit()
-			return
+			return group_id
 
-	new_groups(result_list)
-	return
+	group_id = new_groups(result_list)
+	return group_id
 
 
 def new_groups(url_list):
@@ -304,14 +306,15 @@ def new_groups(url_list):
 		else: print('Нету в базе АНИМЕ: ', url)
 	print('Добавил группу:', group_id)				
 	db.commit()
-	return
+	return group_id
 
 
 def check_update():
 	ua = UserAgent().random
-	anime_urls = []
-	all_urls = []
+	anime_urls 			 = []
+	all_urls			 = []
 	update_anime_id_list = []
+	new_anime_group		 = []
 
 	# Собираем ссылки на последние 2-е страницы Аниме. Приводим их к норм виду. 
 	for p in range(1, 3): 
@@ -325,12 +328,13 @@ def check_update():
 		for anime in page:
 			all_urls.append(anime.select_one('h2 a')['href'])
 
-
+	
 	for url in all_urls:
 		result = count_ep(url.split(domen)[1])
 		if not result:
-			new_anime_db(url)
-			continue		 		
+			group_id = new_anime_db(url)
+			new_anime_group.append(group_id)
+			continue
 		anime_id, episodes_all, fact_ep = result
 
 		# Ищем ИД серий которые вышли по аниме 
@@ -376,7 +380,7 @@ def check_update():
 			except Exception as ex:
 				print(f'check_update = {ep},{anime_id=} \n{ex}')
 		db.commit()
-	return set(update_anime_id_list)
+	return set(update_anime_id_list), new_anime_group
 
 
 # if __name__ == '__main__':

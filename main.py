@@ -62,6 +62,7 @@ async def catching_sorting(message: types.Message):
 # Выдача Аниме по названию фильтры сортировки
 @dp.message_handler()
 async def looking_anime(message: types.Message):
+    # Выбор меню перед поиском
     await bot.send_message(message.from_user.id, 'Подождите...', reply_markup=nav.only_menu)
 
     # Ловим Избранное
@@ -75,10 +76,14 @@ async def looking_anime(message: types.Message):
     # Ловим метод сортировки
     elif message.text in sorting_list:
         a_list, left_count = requests_db.find_sort(message.text)
-        if message.text == 'Высший рейтинг':message.text = 'Высший_рейтинг'
+        if message.text == 'Высший рейтинг':
+            message.text = 'Высший_рейтинг'
 
+    # Ловим просмотренные
+    elif message.text == 'Просмотренные':
+        a_list, left_count = requests_db.find_favorit(message.from_user.id, finishen=1)
 
-    #  По названию
+    # По названию
     else:
         a_list, left_count = requests_db.find_name(message.text)
 
@@ -93,7 +98,9 @@ async def looking_anime(message: types.Message):
                 InlineKeyboardButton('Смотреть', callback_data=f'watch {a[8]} {0}'), \
                 InlineKeyboardButton('Список серий', callback_data=f'list_ep {a[8]} {a[3]}'), \
                 InlineKeyboardButton('Избранное', callback_data=f'favorites {a[8]}')]
-                if a[10] != None and a[10] and a[10] != 'None': but_list.append(InlineKeyboardButton('Все сезоны', callback_data=f'all_seasons {a[8]}'))
+
+                if a[10] != None and a[10] and a[10] != 'None':
+                    but_list.append(InlineKeyboardButton('Все сезоны', callback_data=f'all_seasons {a[8]}'))
                 
                 await bot.send_photo(message.from_user.id, start_url + a[1], f'''
             {a[0].title()}\nТип: {a[9]}\nГод релиза: {a[2]} Серий {a[3]} из {a[4]}\n{a[5].title()}\nРейтинг: {a[6] // 10}/5, {a[7]} оценок.''',\
@@ -101,6 +108,7 @@ async def looking_anime(message: types.Message):
 
             except Exception as ex:
                 print(ex, '\n', a)
+
         if left_count > 0:
             await bot.send_message(message.from_user.id, f'Осталось: {left_count}', reply_markup=InlineKeyboardMarkup().add( \
                     InlineKeyboardButton('Еще', callback_data=f'more {message.text}')))
@@ -119,7 +127,10 @@ async def description_anime(callback: types.CallbackQuery):
 # Ловим запрос на просмотр
 @dp.callback_query_handler(Text(startswith='watch '))
 async def watch_anime(callback: types.CallbackQuery):
-    anime_id, number_ep, user_id = int(callback.data.split()[1]), int(callback.data.split()[2]), callback.from_user.id
+
+    anime_id, number_ep = map(int, callback.data.split()[1:])
+    user_id = callback.from_user.id
+
     # Чекаем юзера на просмотр сериала
     if number_ep == 0:
         number_ep = requests_db.check_episode(anime_id, user_id)
@@ -128,16 +139,20 @@ async def watch_anime(callback: types.CallbackQuery):
     if obj == 'Ошибка в БД':
         await callback.answer('Не смог найти..')
     else:
-        await callback.message.answer(f'{obj[0].title()}\nЭпизод {obj[1]} из {obj[3]}',
+        await callback.message.answer(f'{obj[1].title()}\nЭпизод {obj[2]} из {obj[4]}',
             reply_markup=InlineKeyboardMarkup(row_width=3).add( \
-            InlineKeyboardButton(text='720p', url=obj[5]), \
-            InlineKeyboardButton(text='480p', url=obj[6]), \
-            InlineKeyboardButton(text='Смотреть онлайн', url=obj[7]), \
-            InlineKeyboardButton('Предыдущий эпизод', callback_data=f'watch {obj[4]} {obj[1] - 1}'), \
-            InlineKeyboardButton('Следующий эпизод', callback_data=f'watch {obj[4]} {obj[1] + 1}') \
+            InlineKeyboardButton(text='720p', url=obj[6]), \
+            InlineKeyboardButton(text='480p', url=obj[7]), \
+            InlineKeyboardButton(text='Смотреть онлайн', url=obj[8]), \
+            InlineKeyboardButton('Предыдущий эпизод', callback_data=f'watch {obj[5]} {obj[2] - 1}'), \
+            InlineKeyboardButton('Следующий эпизод', callback_data=f'watch {obj[5]} {obj[2] + 1}') \
             ))
+
+        # Проверка на финальный эпизод в аниме.
+        fin_ep = 0 if obj[2] != obj[0] else 1
+        
         # Сохраняем эпизод за юзером
-        requests_db.save_user_ep(anime_id, user_id, obj[1])
+        requests_db.save_user_ep(anime_id, user_id, obj[2], fin_ep)
 
     await callback.answer()
 
@@ -167,8 +182,6 @@ async def more_anime(callback: types.CallbackQuery):
     this_scrolling = int(callback.data.split()[2]) if len(callback.data.split()) == 3 else 1
     mes = callback.data.split()[1]
 
-    await callback.message.answer( 'Подождите...', reply_markup=nav.only_menu)
-
     # Ловим Избранное
     if mes == 'Избранное':
         a_list, left_count = requests_db.find_favorit(callback.from_user.id, this_scrolling)
@@ -184,6 +197,10 @@ async def more_anime(callback: types.CallbackQuery):
     # Ловим запрос на конкретное аниме по ID
     elif mes[:3] == 'ID_':
         a_list, left_count = requests_db.find_anime(int(mes[3:])), 0
+
+        # Ловим просмотренные
+    elif mes == 'Просмотренные':
+        a_list, left_count = requests_db.find_favorit(callback.from_user.id, this_scrolling, finishen=1)
 
     #  По названию
     else:
@@ -235,29 +252,48 @@ async def click_facori(callback: types.CallbackQuery):
 
 
 # Функция проверки обновлений аниме и отправки сообщений 
+async def message_user_for_update(user, message, anime_name, anime_id):
+    try:
+        await bot.send_message(user, message,
+            reply_markup=InlineKeyboardMarkup().add(\
+            InlineKeyboardButton(f'{anime_name}', callback_data=f'more ID_{anime_id}')
+    ))
+    except Exception as ex:
+        print(f'loop_checking_for_updates:\n{ex}')
+
+
+async def user_search_connect_anime(anime_list):
+    message = 'Вышло продолжение избранного аниме'
+    for anime_id in anime_list:
+        users_id = requests_db.user_search(anime_id)
+        if users_id:
+            anime_name = requests_db.find_anime(anime_id)[0][0].title()
+            for user in users_id:
+                await message_user_for_update(user, message, anime_name, anime_id)
+
+
+async def search_anime_for_group(group_list):
+    for group_id, anime_id, name_ru in group_list:
+        anime = requests_db.find_all_season(anime_id, group_id)
+        for name_old, id_old in anime:
+            message = f'Вы смотрели {name_old.title()}\n вышло его продолжение:'
+            users_id = requests_db.user_search(id_old)
+            for user in users_id:
+                await message_user_for_update(user, message, name_ru, anime_id)
+
+
 async def loop_checking_for_updates(wait):
-    url_tuple_popularity_rating = []
     while True:
         print('Начал проверку обновлений')
-        update_anime_id_list = check_update()
-        for anime_id in update_anime_id_list:
-            users_id = requests_db.user_search(anime_id)
-            if users_id:
-                anime_name = requests_db.find_anime(anime_id)[0][0].title()
-                for user in users_id:
-                    try:
-                        await bot.send_message(user[0], 'Вышили новые серии: ', reply_markup=InlineKeyboardMarkup().add(\
-                            InlineKeyboardButton(f'{anime_name}', callback_data=f'more ID_{anime_id}')
-                            ))
-                    except Exception as ex:
-                        print(f'loop_checking_for_updates:\n{ex}')
+        update_anime_id_list, new_anime_group = check_update()
+        await user_search_connect_anime(update_anime_id_list)
+        await search_anime_for_group(new_anime_group)
 
         print('Обновление рейтинга')
-        # Запрос на обновление рейтинга и популярности.
-        url_tuple_popularity_rating = update_popularity_rating(url_tuple_popularity_rating)
-
+        update_popularity_rating()
 
         await asyncio.sleep(wait)
+
 
 if __name__ == '__main__':
     nest_asyncio.apply()

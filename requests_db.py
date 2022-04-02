@@ -55,7 +55,7 @@ def find_description(anime_id):
 def find_episode(anime_id, number_ep=1):
     try:
         cursor.execute(f'''
-            SELECT name_ru, number_ep, episode_id, episodes_came_out, anime_id
+            SELECT episodes_all, name_ru, number_ep, episode_id, episodes_came_out, anime_id
             FROM anime
             JOIN episode_url USING(anime_id)
             WHERE anime_id = {anime_id} AND number_ep = {number_ep}
@@ -65,18 +65,25 @@ def find_episode(anime_id, number_ep=1):
         return list(result) + pars_ep([result[2]])
 
     except (Exception) as ex:          
-        print(ex,'\nПри запросе find_episoden',anime_id, number_ep)
+        print(ex,'\nПри запросе find_episode',anime_id, number_ep)
         return 'Ошибка в БД'
 
 
 
-def find_favorit(user_id, offset=0): 
+def find_favorit(user_id, offset=0, finishen=0):
+
+    if finishen == 0:
+        where = f'user_id = {user_id} AND favorit = 1 AND finished = 0'
+    else:
+        where = f'user_id = {user_id} AND finished = 1'
+
     offset *= 5
+
     cursor.execute(f'''
         SELECT name_ru, img_url, release, episodes_came_out, episodes_all, genre, rating, popularity, anime_id, type, connection_anime
         FROM users
         JOIN anime USING (anime_id)
-        WHERE user_id = {user_id} AND favorit = 1
+        WHERE {where}
         LIMIT 5
         OFFSET {offset}
         ''')
@@ -86,7 +93,7 @@ def find_favorit(user_id, offset=0):
     cursor.execute(f'''
         SELECT COUNT(*)
         FROM users
-        WHERE user_id = {user_id} AND favorit = {True}
+        WHERE {where}
         ''')
 
     left_count = int(cursor.fetchone()[0]) - (offset + len(result))
@@ -219,11 +226,12 @@ def check_episode(anime_id, user_id):
         print('Ошибка в check_favorites\n',ex)
 
 
-def save_user_ep(anime_id, user_id, epis):
+def save_user_ep(anime_id, user_id, epis, fin_ep):
     try:
         cursor.execute(f'''
             UPDATE users 
-            SET episode_number = {epis}
+            SET episode_number = {epis},
+                finished = {fin_ep}
             WHERE anime_id = {anime_id} AND user_id = {user_id} 
             ''')
         db.commit()
@@ -233,13 +241,15 @@ def save_user_ep(anime_id, user_id, epis):
 
 
 # Запрос на все сезоны к Аниме
-def find_all_season(anime_id):
-    cursor.execute(f'''
-        SELECT group_id 
-        FROM anime_groups 
-        WHERE anime_id = {anime_id}
-        ''')
-    group_id = cursor.fetchone()[0]
+def find_all_season(anime_id, group_id=None):
+
+    if not group_id:
+        cursor.execute(f'''
+            SELECT group_id 
+            FROM anime_groups 
+            WHERE anime_id = {anime_id}
+            ''')
+        group_id = cursor.fetchone()[0]
 
     cursor.execute(f'''
         SELECT name_ru, anime_id
