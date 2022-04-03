@@ -259,7 +259,7 @@ async def message_user_for_update(user, message, anime_name, anime_id):
             InlineKeyboardButton(f'{anime_name}', callback_data=f'more ID_{anime_id}')
     ))
     except Exception as ex:
-        print(f'loop_checking_for_updates:\n{ex}')
+        print(f'message_user_for_update {anime_id= },{user= }:\n{ex}')
 
 
 async def user_search_connect_anime(anime_list):
@@ -269,7 +269,7 @@ async def user_search_connect_anime(anime_list):
         if users_id:
             anime_name = requests_db.find_anime(anime_id)[0][0].title()
             for user in users_id:
-                await message_user_for_update(user, message, anime_name, anime_id)
+                await message_user_for_update(user[0], message, anime_name, anime_id)
 
 
 async def search_anime_for_group(group_list):
@@ -279,7 +279,7 @@ async def search_anime_for_group(group_list):
             message = f'Вы смотрели {name_old.title()}\n вышло его продолжение:'
             users_id = requests_db.user_search(id_old)
             for user in users_id:
-                await message_user_for_update(user, message, name_ru, anime_id)
+                await message_user_for_update(user[0], message, name_ru, anime_id)
 
 
 async def loop_checking_for_updates(wait):

@@ -169,9 +169,6 @@ def new_anime_db(url):
 		img_url = soup.find('img', class_='imgRadius')['src']
 		anime_url = url.split(domen)[1]
 
-
-		data_update = datetime.datetime.now()
-
 		list_ep = re.findall(r'\d{9,}', str(soup.find_all('script')))
 		if list_ep: 
 			if episodes_came_out != len(list_ep):
@@ -190,7 +187,7 @@ def new_anime_db(url):
 			INSERT INTO anime VALUES (
 			{anime_id}, '{name_ru}', '{name_en}', {episodes_came_out}, '{genre}', {rating},  
 			{popularity}, '{description}', '{connection_anime}', '{anime_url}', 
-			'{img_url}', {release}, {episodes_all}, datetime('now'), '{anime_type}');
+			'{img_url}', {release}, {episodes_all}, datetime('now'), '{anime_type}, datetime('now')');
 			''')
 
 		# Записываем в табличку genre

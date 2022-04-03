@@ -270,5 +270,6 @@ def user_search(anime_id):
         ''')
     return cursor.fetchall()
 
-
+if __name__ == '__main__':
+    print(user_search(2714))
 
