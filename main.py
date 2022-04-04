@@ -94,10 +94,12 @@ async def looking_anime(message: types.Message):
 
         for a in a_list:
             try:            
-                but_list = [InlineKeyboardButton('Описание', callback_data=f'description {a[8]}'), \
-                InlineKeyboardButton('Смотреть', callback_data=f'watch {a[8]} {0}'), \
-                InlineKeyboardButton('Список серий', callback_data=f'list_ep {a[8]} {a[3]}'), \
-                InlineKeyboardButton('Избранное', callback_data=f'favorites {a[8]}')]
+                but_list = [InlineKeyboardButton('Описание', callback_data=f'description {a[8]}'),
+                InlineKeyboardButton('Смотреть', callback_data=f'watch {a[8]} {0}'),
+                InlineKeyboardButton('Список серий', callback_data=f'list_ep {a[8]} {a[3]}'),
+                InlineKeyboardButton('Избранное', callback_data=f'favorites {a[8]}'),
+                InlineKeyboardButton('Похожие', callback_data=f'more Похожие 0 {a[8]}')
+                ]
 
                 if a[10] != None and a[10] and a[10] != 'None':
                     but_list.append(InlineKeyboardButton('Все сезоны', callback_data=f'all_seasons {a[8]}'))
@@ -179,11 +181,19 @@ async def list_ep_anime(callback: types.CallbackQuery):
 # Ловим запрос Еще! применяем метод поиска и прокрутку 
 @dp.callback_query_handler(Text(startswith='more '))
 async def more_anime(callback: types.CallbackQuery):
-    this_scrolling = int(callback.data.split()[2]) if len(callback.data.split()) == 3 else 1
+    l = len(callback.data.split())
+    this_scrolling = int(callback.data.split()[2]) if l >= 3 else 1
     mes = callback.data.split()[1]
+    end = ''
 
+    # Ловим запрос на похожие
+    if mes == 'Похожие':
+        anime_id = int(callback.data.split()[3]) if l == 4 else None
+        a_list, left_count = requests_db.find_recommendation(anime_id, this_scrolling)
+        end += f' {anime_id}'
+        
     # Ловим Избранное
-    if mes == 'Избранное':
+    elif mes == 'Избранное':
         a_list, left_count = requests_db.find_favorit(callback.from_user.id, this_scrolling)
 
     # Ловим жанр на фильтр
@@ -210,11 +220,16 @@ async def more_anime(callback: types.CallbackQuery):
     for a in a_list:
         
         try:            
-            but_list = [InlineKeyboardButton('Описание', callback_data=f'description {a[8]}'), \
-            InlineKeyboardButton('Смотреть', callback_data=f'watch {a[8]} {0}'), \
-            InlineKeyboardButton('Список серий', callback_data=f'list_ep {a[8]} {a[3]}'), \
-            InlineKeyboardButton('Избранное', callback_data=f'favorites {a[8]}')]
-            if a[10] != None and a[10] and a[10] != 'None': but_list.append(InlineKeyboardButton('Все сезоны', callback_data=f'all_seasons {a[8]}'))
+            but_list = [
+                InlineKeyboardButton('Описание', callback_data=f'description {a[8]}'),
+                InlineKeyboardButton('Смотреть', callback_data=f'watch {a[8]} {0}'),
+                InlineKeyboardButton('Список серий', callback_data=f'list_ep {a[8]} {a[3]}'),
+                InlineKeyboardButton('Избранное', callback_data=f'favorites {a[8]}'),
+                InlineKeyboardButton('Похожие', callback_data=f'more Похожие 0 {a[8]}')
+            ]
+
+            if a[10] != None and a[10] and a[10] != 'None':
+                but_list.append(InlineKeyboardButton('Все сезоны', callback_data=f'all_seasons {a[8]}'))
 
             await callback.message.answer_photo(start_url + a[1], f'''
         {a[0].title()}\nТип: {a[9]}\nГод релиза: {a[2]} Серий {a[3]} из {a[4]}\n{a[5].title()}\nРейтинг: {a[6] // 10}/5, {a[7]} оценок.''',\
@@ -225,7 +240,7 @@ async def more_anime(callback: types.CallbackQuery):
             print(ex, '\n', a)
     if left_count > 0:
         await callback.message.answer(f'Осталось: {left_count}', reply_markup=InlineKeyboardMarkup().add( \
-                InlineKeyboardButton('Еще', callback_data=f'more {mes} {this_scrolling + 1}')))
+                InlineKeyboardButton('Еще', callback_data=f'more {mes} {this_scrolling + 1}{end}')))
 
     await callback.answer()
 

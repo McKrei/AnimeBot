@@ -101,6 +101,42 @@ def find_favorit(user_id, offset=0, finishen=0):
     return result, left_count
 
 
+def find_recommendation(anime_id, offset=0):
+    offset *= 5
+
+    if anime_id:
+        cursor.execute(f'''
+            SELECT name_ru, img_url, release, episodes_came_out, episodes_all, genre, anime.rating, popularity, anime.anime_id, type, connection_anime
+            FROM recommendation
+            JOIN anime
+                ON recommendation.rec_anime_id = anime.anime_id
+            WHERE recommendation.anime_id = {anime_id}
+            LIMIT 20
+            OFFSET {offset}
+            ''')
+
+        result = list(cursor.fetchmany(5))
+
+    if not anime_id or not result:
+        cursor.execute(f'''
+            SELECT name_ru, img_url, release, episodes_came_out, episodes_all, genre, anime.rating, popularity, anime.anime_id, type, connection_anime, count(*) as count
+            FROM recommendation
+            JOIN anime 
+                ON recommendation.rec_anime_id = anime.anime_id
+            GROUP BY rec_anime_id
+            ORDER BY count DESC
+            LIMIT 20
+            OFFSET {offset}
+        ''')
+        result = list(cursor.fetchmany(5))
+
+
+    left_count = 15 - offset
+    if left_count <= 0: left_count = 0
+    return result, left_count
+
+
+
 def find_anime(anime_id):
     cursor.execute(f'''
         SELECT name_ru, img_url, release, episodes_came_out, episodes_all, genre, rating, popularity, anime_id, type, connection_anime
