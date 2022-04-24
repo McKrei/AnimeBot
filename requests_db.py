@@ -62,7 +62,7 @@ def find_episode(anime_id, number_ep=1):
             ''')    
 
         result = cursor.fetchone()
-        return list(result) + pars_ep([result[2]])
+        return list(result) + pars_ep([result[3]])
 
     except (Exception) as ex:          
         print(ex,'\nПри запросе find_episode',anime_id, number_ep)
@@ -307,5 +307,5 @@ def user_search(anime_id):
     return cursor.fetchall()
 
 if __name__ == '__main__':
-    print(user_search(2714))
+    print(find_episode(2681, 18))
 

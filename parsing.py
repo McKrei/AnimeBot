@@ -1,6 +1,3 @@
-import datetime
-from email import header
-
 import re
 import requests
 import aiohttp
@@ -33,7 +30,6 @@ async def get_page_data(id, url):
 			if popularity > 0:
 				result_tuple = (popularity, rating, id)
 				result_data.append(result_tuple)
-
 		return result_data
 
 
@@ -83,8 +79,8 @@ def update_popularity_rating():
 def pars_ep(list_url_ep):
 	result = []
 	ua = UserAgent().random
-
-	for ep in list_url_ep:	 	
+	
+	for ep in list_url_ep:
 		url = srart_url_pleer + str(ep)
 		html = requests.get(url, headers={'user-agent': ua}).text
 		soup = BeautifulSoup(html, 'lxml')
@@ -175,21 +171,21 @@ def new_anime_db(url):
 				episodes_came_out = len(list_ep)
 				if episodes_came_out > episodes_all:
 					episodes_all = episodes_came_out
-
+		
 		cursor.execute(f'''
 		SELECT MAX(anime_id)
 		FROM anime
 		''')
 		anime_id = int(cursor.fetchone()[0]) +1
-
+		
 		# Записываем в табличку anime
 		cursor.execute(f'''
 			INSERT INTO anime VALUES (
 			{anime_id}, '{name_ru}', '{name_en}', {episodes_came_out}, '{genre}', {rating},  
 			{popularity}, '{description}', '{connection_anime}', '{anime_url}', 
-			'{img_url}', {release}, {episodes_all}, datetime('now'), '{anime_type}, datetime('now')');
+			'{img_url}', {release}, {episodes_all}, datetime('now'), '{anime_type}', datetime('now'));
 			''')
-
+		
 		# Записываем в табличку genre
 		for el in genre.split(', '):
 			genre_id = genre_dict.get(el)
@@ -198,6 +194,7 @@ def new_anime_db(url):
 				INSERT INTO anime_genre VALUES
 				({anime_id}, {genre_id});
 				''')
+
 
 		# Записываем в табличку episode_url
 		number_ep = 0
@@ -380,8 +377,5 @@ def check_update():
 	return set(update_anime_id_list), new_anime_group
 
 
-# if __name__ == '__main__':
-# 	now = datetime.datetime.now()
-# 	list_ = []
-# 	s = update_popularity_rating(list_)
-# 	print(datetime.datetime.now() - now)
+if __name__ == '__main__':
+	pars_ep
