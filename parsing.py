@@ -9,6 +9,69 @@ from activate_anime_bot import db, cursor
 
 from bank import srart_url_pleer, start_url, genre_dict, domen, srart_url_pleer_mirror
 
+async def download_file(id):
+	try:
+		async with aiohttp.ClientSession() as session:
+			url = 'https://tr.anidub.com/engine/download.php?' + id
+			async with session.get(url) as res:
+				content = await res.content.read()
+			
+			with open(f'torrents/{id}.torrent', 'wb') as file:
+				file.write(content)
+		return True
+	except Exception:
+		return
+
+''' ### ПОЛУЧЕНИЕ СПИСКА ТОРРЕНТ ФАЙЛОВ С anidub.ru ### '''
+
+async def get_anidub(anime):
+	URL = 'https://tr.anidub.com/' + anime[-1]
+	async with aiohttp.request('GET', URL) as resp:
+		if resp.status == 200:
+			html = await resp.text()
+			soup = BeautifulSoup(html, 'lxml')
+			text = str(soup.find('div', class_='torrent_c'))
+
+			pattern = 'div id="'
+			quality = []
+			while text.count(pattern):
+				i = text.index(pattern) + len(pattern)
+				text = text[i:]
+				name = text[:text.index('"')]
+				if 'torrent' not in name:
+					quality.append(name)
+				
+			torrents = []
+			for el in quality:    
+				bloc = soup.find(id=el)
+				torrents.append((
+					el,                                                 # Качество
+					bloc.find('span', class_='li_distribute_m').text,   # Раздают
+					bloc.find('span', class_='li_swing_m').text,        # Качают
+					bloc.find('span', class_='red').text,               # Размер
+					bloc.find('span', class_='li_download_m').text,     # Скачали раз
+					bloc.find('a')['href'].split('?')[-1]               # id файла
+				))
+			result_anime_list.append(anime[:-1] + [torrents])
+		else: 
+			print(resp.status)
+
+async def load_anidub(anime_list):
+	tasks = []
+	for anime in anime_list:
+		task = asyncio.create_task(get_anidub(list(anime)))
+		tasks.append(task)
+	await asyncio.gather(*tasks)
+
+
+
+async def torrent_parsing(loop, anime_list):
+	global result_anime_list
+	result_anime_list = []
+	loop.run_until_complete(load_anidub(anime_list))
+
+	return result_anime_list
+
 
 def get_rating_and_popular(soup):
 	try:
@@ -40,7 +103,7 @@ async def load_site_data(url_list):
 		tasks.append(task)
 	await asyncio.gather(*tasks)
 
-def writing_popularity_rating(w_list):
+async def writing_popularity_rating(w_list):
 		cursor.executemany(f'''
 			UPDATE anime
 			SET popularity = ?,
@@ -52,7 +115,7 @@ def writing_popularity_rating(w_list):
 		db.commit()
 
 
-def update_popularity_rating():
+async def update_popularity_rating(loop):
 	try: 
 		global result_data
 		result_data = []
@@ -67,8 +130,8 @@ def update_popularity_rating():
 
 		url_list = [[id, start_url + url] for id, url in url_tuple]
 		
-		asyncio.get_event_loop().run_until_complete(load_site_data(url_list))
-		writing_popularity_rating(result_data)
+		loop.run_until_complete(load_site_data(url_list))
+		await writing_popularity_rating(result_data)
 
 		del result_data
 

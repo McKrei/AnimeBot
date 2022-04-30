@@ -1,7 +1,7 @@
 from bank import ru_alphabet, sorting_dict, genre_dict
 from parsing import pars_ep
 from activate_anime_bot import db, cursor
-
+import asyncio
 
 
 
@@ -306,6 +306,19 @@ def user_search(anime_id):
         ''')
     return cursor.fetchall()
 
+# Поиск совпадений в торренте
+async def torrent_search(name):
+    cursor.execute(f'''
+        SELECT name, cat, year, url
+        FROM torrent
+        WHERE name LIKE '%{name}%'
+        ORDER BY year DESC
+        ''')
+    
+    return cursor.fetchall()
+
+
+
 if __name__ == '__main__':
-    print(find_episode(2681, 18))
+    print(torrent_search('наруто'))
 

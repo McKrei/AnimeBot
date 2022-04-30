@@ -3,6 +3,11 @@
 	
 sorting_list = ('Новые', 'Популярные', 'Высший рейтинг', 'Высший_рейтинг', 'Обновления')
 
+name_torrent_list = [
+	'Torrent',
+	'Торрент',
+	'торент'
+]
 
 sorting_dict = {'Новые': 'date_update',
 				'Популярные': 'popularity',

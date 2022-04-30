@@ -1,3 +1,5 @@
+from os import remove
+
 import asyncio
 from random import randint
 from aiogram import Bot, types
@@ -9,11 +11,14 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 import requests_db
 import markups as nav
 import nest_asyncio
+import bank
+import func
 
 from activate_anime_bot import token
-from parsing import check_update
-from parsing import update_popularity_rating
+from anidub_tr import parsing_anidub
+from parsing import *
 from bank import genre_dict, sorting_list, start_url
+
 
 
 # Активация бота
@@ -57,6 +62,35 @@ async def catching_genre(message: types.Message):
 @dp.message_handler(Text(equals='Поиск', ignore_case=True))
 async def catching_sorting(message: types.Message):
     await bot.send_message(message.from_user.id, 'Введите название аниме', reply_markup=nav.only_menu)
+
+
+# Запрос на торрент
+@dp.message_handler(Text(startswith=bank.name_torrent_list, ignore_case=True))
+async def search_torrent(message: types.Message):
+    name = ' '.join(message.text.split()[1:])
+    if name:
+        anime = await requests_db.torrent_search(name)
+        anime_tor_list = await torrent_parsing(loop, anime)
+
+        if anime_tor_list:
+
+            for name, cat, year, torents in anime_tor_list:
+                button_list = []
+                for tor in torents:
+                    mes = f'{tor[0]} | {tor[3]} | ↑ {tor[1]} - ↓ {tor[2]} | {tor[4]}'
+                    button_list.append(
+                        InlineKeyboardButton(mes, callback_data=f'Torrent {tor[5]}')
+                    )
+
+                await bot.send_message(
+                    message.from_user.id,
+                    f"*{name.title()}*\n{cat} | {year} год",
+                    parse_mode= "Markdown",
+                    reply_markup=InlineKeyboardMarkup(row_width=1).add(*button_list)
+                    )
+            return
+                    
+    await bot.send_message(message.from_user.id,'Не смог найти! ¯\_(ツ)_/¯')
 
 
 # Выдача Аниме по названию фильтры сортировки
@@ -116,7 +150,18 @@ async def looking_anime(message: types.Message):
                     InlineKeyboardButton('Еще', callback_data=f'more {message.text}')))
 
 
-''' ЛОВИМ CALLVACK DATA '''
+''' ################################ ЛОВИМ CALLVACK DATA ################################ '''
+
+# Запрос на торрент файл 
+@dp.callback_query_handler(Text(startswith='Torrent '))
+async def get_torrent_file(callback: types.CallbackQuery):
+    id_file = callback.data.split()[1]
+    await download_file(id_file)
+    path = f'torrents/{id_file}.torrent'
+    with open(path, "rb") as file:
+        await callback.message.answer_document(file)
+    remove(path)
+
 
 # Ловим запрос на подробное описание
 @dp.callback_query_handler(Text(startswith='description '))
@@ -303,9 +348,10 @@ async def loop_checking_for_updates(wait):
         update_anime_id_list, new_anime_group = check_update()
         await user_search_connect_anime(update_anime_id_list)
         await search_anime_for_group(new_anime_group)
+        await parsing_anidub(loop, 1, 3)
 
         print('Обновление рейтинга')
-        update_popularity_rating()
+        await update_popularity_rating(loop)      
 
         await asyncio.sleep(wait)
 
@@ -313,5 +359,5 @@ async def loop_checking_for_updates(wait):
 if __name__ == '__main__':
     nest_asyncio.apply()
     loop = asyncio.get_event_loop()
-    loop.create_task(loop_checking_for_updates(randint(10_000, 50_000)))
+    loop.create_task(loop_checking_for_updates(randint(60, 120)))
     executor.start_polling(dp, skip_updates=True)
