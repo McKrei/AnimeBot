@@ -309,7 +309,7 @@ def user_search(anime_id):
 # Поиск совпадений в торренте
 async def torrent_search(name):
     cursor.execute(f'''
-        SELECT name, cat, year, url
+        SELECT year, name, cat, url
         FROM torrent
         WHERE name LIKE '%{name}%'
         ORDER BY year DESC

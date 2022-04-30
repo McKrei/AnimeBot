@@ -12,7 +12,6 @@ import requests_db
 import markups as nav
 import nest_asyncio
 import bank
-import func
 
 from activate_anime_bot import token
 from anidub_tr import parsing_anidub
@@ -33,7 +32,11 @@ async def start_command(message: types.Message):
                            reply_markup=nav.main_menu)
     # Ответ на help
     if message.text == '/help':
-        await bot.send_message(message.from_user.id, 'Сам разбирайся, для кого я создал столь удобный интерфейс!')
+        await bot.send_message(
+            message.from_user.id,
+            bank.help_text,
+            parse_mode= "Markdown"
+            )
 
 
 # Основное меню
@@ -67,16 +70,17 @@ async def catching_sorting(message: types.Message):
 # Запрос на торрент
 @dp.message_handler(Text(startswith=bank.name_torrent_list, ignore_case=True))
 async def search_torrent(message: types.Message):
-    name = ' '.join(message.text.split()[1:])
+    name = ' '.join(message.text.split()[1:]).strip().lower()
     if name:
         anime = await requests_db.torrent_search(name)
-        anime_tor_list = await torrent_parsing(loop, anime)
+        data  = await torrent_parsing(loop, anime)
+        anime_tor_list = sorted(data)
 
         if anime_tor_list:
 
-            for name, cat, year, torents in anime_tor_list:
+            for year, name, cat, torrents in anime_tor_list:
                 button_list = []
-                for tor in torents:
+                for tor in torrents:
                     mes = f'{tor[0]} | {tor[3]} | ↑ {tor[1]} - ↓ {tor[2]} | {tor[4]}'
                     button_list.append(
                         InlineKeyboardButton(mes, callback_data=f'Torrent {tor[5]}')
@@ -359,5 +363,5 @@ async def loop_checking_for_updates(wait):
 if __name__ == '__main__':
     nest_asyncio.apply()
     loop = asyncio.get_event_loop()
-    loop.create_task(loop_checking_for_updates(randint(60, 120)))
+    loop.create_task(loop_checking_for_updates(randint(600, 1_200)))
     executor.start_polling(dp, skip_updates=True)
